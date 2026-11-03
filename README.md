@@ -36,6 +36,50 @@ This is a working hypothesis, not a pinout:
   need 4 of those nets, which leaves at most 2 for anything else. The remaining
   13 pads are not connected to the module.
 
+## USB identity
+
+Read from a working device with `lsusb -v` and sysfs. Nothing was sent to the
+device beyond normal enumeration.
+
+| Field               | Value                                                |
+| ------------------- | ---------------------------------------------------- |
+| VID:PID             | `2581:3b7c` (`usb.ids` vendor name: Plug-up)         |
+| Strings             | Manufacturer `Ledger`, product `Ledger Wallet`       |
+| Serial string       | `0000`                                               |
+| Speed               | Full speed, USB 2.00, `bcdDevice` 0.00               |
+| EP0                 | 16 bytes                                             |
+| Interface           | One HID interface, HID 1.01                          |
+| Data endpoints      | `0x82` IN and `0x02` OUT, interrupt, 64 bytes, 1 ms  |
+| Configuration       | `bmAttributes` 0xc0 (self-powered), `MaxPower` 100 mA |
+
+The 16-byte EP0 and the 64-byte endpoints on EP2 match the buffer sizes in the data
+brief. `bmAttributes` claims self-powered although the device runs from the bus,
+and `GET_STATUS` reports bus-powered.
+
+HID report descriptor (34 bytes):
+
+```text
+06 a0 ff        Usage Page (vendor 0xFFA0)
+09 01           Usage (0x01)
+a1 01           Collection (Application)
+09 03             Usage (0x03)
+15 00             Logical Minimum (0)
+26 ff 00          Logical Maximum (255)
+75 08             Report Size (8)
+95 40             Report Count (64)
+81 08             Input (Data, Array, Absolute, Wrap)
+09 04             Usage (0x04)
+15 00             Logical Minimum (0)
+26 ff 00          Logical Maximum (255)
+75 08             Report Size (8)
+95 40             Report Count (64)
+91 08             Output (Data, Array, Absolute, Wrap)
+c0              End Collection
+```
+
+The transport is therefore raw 64-byte vendor reports in each direction, with no
+report IDs.
+
 ## X-ray imaging
 
 ![X-ray of the Ledger Nano module](xray/202610260220940004_20261103013.png)
