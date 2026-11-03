@@ -155,6 +155,23 @@ warp uses hand-picked die corners. The pad positions line up with the pale pad
 openings visible on the die, including the group of four. The 180-degree
 alternative puts that group at the wrong end of the die, so it was rejected.
 
+## Die size
+
+![Die on a calibration grid](microscope/die_scale.jpg)
+
+`microscope/die_scale.jpg` (3024 x 3024 px; source:
+<https://x.com/MagicalTux/status/2117577532845502839>, 2026-11-03) shows the die on a
+grid with 0.1 mm divisions.
+
+The project owner gives the size as about **3.4 x 2 mm**. A grid-based measurement in
+this photo agrees within the error from the die's dark border: the calibration grid
+resolves to about 37 px per 0.1 mm, and the bright active area measures roughly
+3.2 x 1.7 mm, with the true outer edge a little larger.
+
+Taking 3.4 mm for the long edge, and the pad count of 10 openings along each long edge
+from the die photos, the pad pitch is on the order of 0.3 mm. This is a rough estimate,
+not a measured pitch.
+
 ## Die markings and higher-resolution photos
 
 Three cleaner photos of an extracted die (source: the project owner's post,
