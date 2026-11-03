@@ -96,6 +96,7 @@ available after setup, and does not list `6985`. This fits the unit's history: i
 brand new and has never been set up.
 
 The framing and commands are summarised in [Host protocol](docs/protocol.md).
+See [Firmware updates](docs/firmware.md) for newer firmware.
 
 Electrum lists `2581:3b7c` as "HW.1 Ledger production". See
 [Plug-up research notes](docs/plug-up.md) for the vendor ID and its history.
