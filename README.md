@@ -121,3 +121,25 @@ Die pad coordinates are approximate pixel positions in the unflipped
   one connects to `T4` with wire 4.
 
 This map comes from images only and has not been confirmed electrically.
+
+## Tracing from the USB plug
+
+Reported from tracing the module back from the USB plug. Contact names are not
+recorded yet.
+
+- `VCC` feeds two die pads. `T1` is the only contact with two wires, so it is the
+  likely candidate, but this has not been confirmed.
+- `GND`, `D+` and `D-` account for one pad each.
+- Two pads are unknown. One is routed near USB `D+`, and the other near `VCC`.
+  Neither is known to connect to them.
+
+Hypotheses, none tested:
+
+- The second `VCC` pad may be a tied-off input rather than a second supply. An
+  extra supply pad would be odd with only one `GND` pad. An active-low reset held
+  inactive would fit.
+- The unknown pad near `D+` may control a USB pull-up, through a resistor to
+  `D+`. Full-speed USB devices need about 1.5 kohm on `D+`. A reading near that
+  value would support this.
+- The unknown pad near `VCC` may be a similar strap, or a test or programming
+  point.
