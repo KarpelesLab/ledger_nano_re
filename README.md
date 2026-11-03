@@ -80,6 +80,8 @@ c0              End Collection
 The transport is therefore raw 64-byte vendor reports in each direction, with no
 report IDs.
 
+The framing and commands are summarised in [Host protocol](docs/protocol.md).
+
 Electrum lists `2581:3b7c` as "HW.1 Ledger production". See
 [Plug-up research notes](docs/plug-up.md) for the vendor ID and its history.
 
