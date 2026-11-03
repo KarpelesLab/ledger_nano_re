@@ -120,24 +120,28 @@ Initial observations from the image, not yet checked against the physical device
 
 ## Die photo
 
-![Microscope photo of the die](microscope/die_top.png)
+![Microscope mosaic of the intact die](microscope/die_full.png)
 
-`microscope/die_top.png` (2000 x 1412 px, no scale reference)
+`microscope/die_full.png` (2000 x 1257 px, no scale reference)
 
-Optical microscope image of the die, which appears to be stitched from several
-fields. It is mirrored relative to the X-ray. To compare them, flip it
-horizontally:
+Optical microscope mosaic of an intact die, stitched from several fields. The
+hatched zig-zag border around the edge is the active shield (top metal). The pad
+ring runs along the two long edges; the gold-filled pads carry bond balls and are
+the nets actually wired out in the module, so only a handful of the 20 pads are
+bonded. The ST logo and markings sit in the bottom-left corner (see
+[Die markings](#die-markings-and-higher-resolution-photos)). The image is
+mirrored relative to the X-ray; flip horizontally to compare:
 
 ```sh
-magick microscope/die_top.png -flop die_top_flopped.png
+magick microscope/die_full.png -flop die_full_flopped.png
 ```
 
-The die was extracted mechanically with a knife, not chemically. The cracks,
-gouges and missing fragments on its surface come from that extraction, so they
-are not device features.
-
-Six bond sites are clearly visible, out of 20 pad openings along the two long
-edges. The wire map below indicates a seventh on a damaged pad.
+A separate die from the teardown was extracted mechanically with a knife, not
+chemically; its cracks, gouges and missing fragments are extraction damage, not
+device features. That damaged die (`microscope/die_top.png`, 2000 x 1412 px) is
+the one the [bond wire map](#bond-wire-map) below was traced on, where six bond
+sites are clearly visible out of the 20 pad openings and a seventh sits on a torn
+pad.
 
 ## Wires through the compound
 
