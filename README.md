@@ -80,6 +80,16 @@ c0              End Collection
 The transport is therefore raw 64-byte vendor reports in each direction, with no
 report IDs.
 
+GET FIRMWARE VERSION on this unit (`tools/get_firmware_version.py`):
+
+| Field        | Raw    | Value                                   |
+| ------------ | ------ | --------------------------------------- |
+| Features     | `01`   | Compressed public keys, no other flags  |
+| Architecture | `20`   | Meaning not documented                  |
+| Firmware     | `01 00 01` | 1.0.1                               |
+| Loader       | `01 10` | 1.16 in decimal, or 1.10 if the byte is meant as hex |
+| Status word  | `90 00` | Success                                 |
+
 The framing and commands are summarised in [Host protocol](docs/protocol.md).
 
 Electrum lists `2581:3b7c` as "HW.1 Ledger production". See

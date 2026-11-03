@@ -1,8 +1,12 @@
 # Host protocol
 
 Summary of Ledger's [btchip technical specification][spec], "Ledger Wallet 1: Common
-Technical Specifications", for firmware `lw1-1.0` (March 2015). None of this has
-been tested on our unit, and its firmware may be a different version.
+Technical Specifications", for firmware `lw1-1.0` (March 2015). Our unit reports
+firmware 1.0.1.
+
+On our unit, only the HID framing and GET FIRMWARE VERSION have been tested. They
+worked as documented, with the command sent as `E0 C4 00 00 00`, as `btchip-python`
+does. Everything else here is still untested.
 
 ## USB HID framing
 
