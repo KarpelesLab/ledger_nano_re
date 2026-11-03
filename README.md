@@ -155,6 +155,33 @@ warp uses hand-picked die corners. The pad positions line up with the pale pad
 openings visible on the die, including the group of four. The 180-degree
 alternative puts that group at the wrong end of the die, so it was rejected.
 
+## Die markings and higher-resolution photos
+
+Three cleaner photos of an extracted die (source: the project owner's post,
+<https://x.com/MagicalTux/status/2117575204692218102>, 2026-11-03):
+
+- `microscope/die_on_carrier.jpg` - die resting on a green carrier, diffraction colours.
+- `microscope/die_clean.jpg` - the die alone, with the pad ring and bond balls visible.
+- `microscope/die_corner_markings.jpg` - top-right corner at high magnification.
+
+![Die corner markings](microscope/die_corner_markings.jpg)
+
+The corner carries etched identification, which confirms the die is an ST part:
+
+| Marking | Reading                                                             |
+| ------- | ------------------------------------------------------------------ |
+| Logo    | STMicroelectronics "ST" logo                                        |
+| `2008`  | Likely a mask or design year                                        |
+| `K2R0`  | A mask or product code, exact meaning unknown                       |
+
+Near the logo is a block of small test or alignment labels (single letters such as
+`F`, `I`, `C`, `B`), and a large circular pad, probably a bonding or probe pad. A
+dense column of fingers runs down from the corner toward the pad ring. These are
+visual readings from one photo and have not been cross-checked.
+
+The die has a hatched metal top layer (seen as the zig-zag border), consistent with
+the active shield listed in the data brief.
+
 ## Bond wire map
 
 ![Diagram of the die and bond wires](diagrams/bond_map.svg)
