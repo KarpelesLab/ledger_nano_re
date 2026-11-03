@@ -90,6 +90,11 @@ GET FIRMWARE VERSION on this unit (`tools/get_firmware_version.py`):
 | Loader       | `01 10` | 1.16 in decimal, or 1.10 if the byte is meant as hex |
 | Status word  | `90 00` | Success                                 |
 
+GET OPERATION MODE (`tools/get_operation_mode.py`) returned status `6985` for both
+the operation mode and second factor queries. The spec documents this command as
+available after setup, and does not list `6985`, so this suggests that the unit
+is not set up. That has not been confirmed.
+
 The framing and commands are summarised in [Host protocol](docs/protocol.md).
 
 Electrum lists `2581:3b7c` as "HW.1 Ledger production". See
