@@ -80,7 +80,7 @@ sub-commands and a very specific status-word layout:
 | ---- | --------------------------------- | ---------------------------------------- |
 | `00` | `Lc=0`→`6700`, `Lc>0`→`6b00`      | invalid P1                               |
 | `01`–`03`, `08`, `10`… | `6b00` (all `Lc`) | invalid P1                               |
-| `04` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | write to a separate slot; does **not** touch the SHA state or block buffer (purpose open) |
+| `04` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | inert: returns `9000`, discards data; not needed to prime, no reachable effect (purpose open) |
 | `05` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | **SHA-256 init**: state ← IV, block buffer + offset cleared (needs `Lc`≥16) |
 | `06` | `Lc=0`→`6700`; `Lc≥1`→`9000, 96`  | **SHA-256 update + dump**: write `Lc` bytes into the block, compress on fill, return 64-byte block + 32-byte state |
 | `07` | `Lc=0`→`6700`; `Lc≥1`→`9000, 32`  | **SHA256d finalize**: return `SHA256(SHA256(message))` of the whole streamed message (own `Lc` data ignored) |
@@ -116,12 +116,13 @@ fresh-boot capture this session.
 **Priming rule (confirmed by A/B testing on fresh boots).** The SHA-256 context
 must be **initialised** (`P1=05`, `Lc`≥16) before the first `P1=06` read, or that
 read returns `6f02` and the device wedges into all-`6faa` until a USB unplug.
-`P1=05` is the real init: it resets the hash state to the IV and clears the block
-buffer. A write with `Lc=1` does **not** init (the subsequent `P1=06` still returns
-`6f02`); `Lc`≥16 is required. The known-good fresh-boot sequence used `P1=04` then
-`P1=05` (both `Lc`≥16), but `P1=05` alone does the reset — see the role test below.
-`P1=04` leaves the SHA state and block buffer untouched (it writes some other,
-still-unidentified slot), so it is not what primes the engine.
+`P1=05` is the init, and `P1=05` **alone is sufficient** — confirmed on a fresh boot:
+`P1=05 Lc=16` with no prior `P1=04`, immediately followed by `P1=06`, returns `9000`
+with the 96-byte body and state = IV. A write with `Lc=1` does **not** init (the
+subsequent `P1=06` still returns `6f02`); `Lc`≥16 is required. The known-good sequence
+captured earlier used `P1=04` then `P1=05`, but the `P1=04` is superfluous: `P1=04`
+leaves the SHA state and block buffer untouched and is not what primes the engine
+(see the `P1=04` analysis below).
 
 ```
 fresh boot:  P1=04 Lc=1  data=00           -> 9000, 0    (not a priming write)
@@ -215,11 +216,25 @@ completing, no compression fires.
   messages (all byte-for-byte; see `tools/sha_test.py`). Its own `Lc` payload is a dummy
   (only needed to pass the `Lc`≥1 length gate) — the output depends solely on what was
   streamed via `P1=06`. Empty-message value is `5df6e0e2…9456` = `SHA256(SHA256(""))`.
-- **`P1=04`** (`Lc`≥16) = returns `9000` but leaves **both** the SHA state and the block
-  buffer unchanged (verified: state held at `52465800…`, earlier `cc` bytes still in the
-  buffer with the new byte appended after them). It writes some other, still-unidentified
-  slot — possibly a key/IV override for an HMAC or custom-IV mode that no exposed
-  sub-command reads back. Its purpose is **open**.
+- **`P1=04`** (`Lc`≥1) = **inert from the host's view**. It returns `9000` and silently
+  discards its data: it is not required for priming (`P1=05` alone primes a fresh boot),
+  and it has no observable effect on anything reachable. Ruled out by direct test:
+    - **not a custom IV** — loading a distinctive 32-byte value via `P1=04` (in either
+      order relative to `P1=05`) leaves the next compression evolving from the standard
+      IV, not the loaded value;
+    - **not an HMAC key** — the first streamed block compresses directly, with no
+      key⊕ipad prefix block;
+    - **not a length counter** — the `P1=07` finalize padding length is unchanged after
+      a `P1=04` write;
+    - **no state/buffer change** — the 32-byte state and 64-byte block are untouched.
+
+  It evidently writes some internal slot/register with no readback or side effect through
+  any exposed command — a stub, a legacy/debug entry, or a register consumed only by an
+  internal (e.g. factory/production) code path. Its purpose remains **open**, but it is
+  safe and effectively a no-op. (The broad "does its data land anywhere" diff could only
+  be run against the SHA context and `E0 C4`; the other candidate read commands —
+  `E0 CA`, `D0 24` — themselves drop the device into the `6faa` wedge, so they can't be
+  used as diff probes.)
 
 So `E0 D0` is a complete Bitcoin-style hash primitive: init (`05`), streaming update
 exposing the live midstate (`06`), and double-SHA-256 finalize (`07`). The exposed
@@ -245,8 +260,7 @@ Sending zeroed data of varying `Lc`:
 - `E0 20` (SETUP) → `6a80` Invalid data.
  - `E0 D0` (undocumented) → `6700` at `Lc=0`; a **Bitcoin hashing accelerator**, fully
    characterised above (`P1=05` init, `P1=06` streaming update+dump returning the 64-byte
-   block buffer and 32-byte hash state, `P1=07` SHA256d finalize, `P1=04` a separate slot
-   write).
+   block buffer and 32-byte hash state, `P1=07` SHA256d finalize, `P1=04` inert/no-op).
 - All the other even-instruction `E0`s → `6985`.
 
 `6a80` and `6b00` are both defined in spec §27 as distinct status words; neither was
@@ -295,7 +309,7 @@ enabled in 1.0.1).
 | `E0 c4` | GET FIRMWARE VERSION (§24.3) | `9000` |
 | `E0 c6` | COMPOSE M OF N ADDRESS (§24.4) | `6700` at `Lc=0`, `6d00` with data |
 | `E0 ca` | GET POINT OF SALE SEED (§24.5) | `9000`, empty |
-| `E0 d0` | **undocumented** — Bitcoin hash accelerator (spec §§19–25.6) | `Lc=0`→`6700`; `P1=05` `Lc≥16`→init (state=IV); `P1=06` `Lc≥1`→`9000` 96 bytes (64-byte message block + 32-byte hash state, compresses on fill); `P1=07` `Lc≥1`→`9000` 32 bytes (SHA256d of streamed message); `P1=04` `Lc≥1`→`9000 0` (separate slot) |
+| `E0 d0` | **undocumented** — Bitcoin hash accelerator (spec §§19–25.6) | `Lc=0`→`6700`; `P1=05` `Lc≥16`→init (state=IV); `P1=06` `Lc≥1`→`9000` 96 bytes (64-byte message block + 32-byte hash state, compresses on fill); `P1=07` `Lc≥1`→`9000` 32 bytes (SHA256d of streamed message); `P1=04` `Lc≥1`→`9000 0` (inert/no-op) |
 | `D0 20` | FACTORY INIT KEYS (§25.1) | `6985` |
 | `D0 22` | FACTORY INIT ATTESTATION (§25.2) | `6985` |
 | `D0 24` | GET FIRMWARE UPDATE ID (§25.3) | `9000` `00 00 00 00 00 00 00 01` |
