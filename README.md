@@ -92,8 +92,8 @@ GET FIRMWARE VERSION on this unit (`tools/get_firmware_version.py`):
 
 GET OPERATION MODE (`tools/get_operation_mode.py`) returned status `6985` for both
 the operation mode and second factor queries. The spec documents this command as
-available after setup, and does not list `6985`, so this suggests that the unit
-is not set up. That has not been confirmed.
+available after setup, and does not list `6985`. This fits the unit's history: it is
+brand new and has never been set up.
 
 The framing and commands are summarised in [Host protocol](docs/protocol.md).
 
