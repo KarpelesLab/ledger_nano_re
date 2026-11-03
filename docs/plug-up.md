@@ -21,7 +21,8 @@ Stated by sources:
   implementation for Plug-up/Happlink". ([Ledger][ledger-u2f])
 - `btchip-js-api`, Ledger's HW.1 JavaScript API, requires the Plug-up Bridge Chrome
   extensions and uses `ubinity/PlugupExtension`. ([btchip-js-api][jsapi])
-- The BTChip announcement names the ST23YT66 as its chip. ([BitcoinTalk][btc])
+- The BTChip announcement names the ST23YT66 as its chip. Its author, `btchip`, is
+  Nicolas Bacca, so this is a first-hand source. ([BitcoinTalk][btc])
 - The HW.1 is also described as based on the ST23YT66. ([Saleem Rashid][rashid])
 - Electrum lists `2581:3b7c`, our device's ID, as "HW.1 Ledger production".
   ([Electrum][electrum])
