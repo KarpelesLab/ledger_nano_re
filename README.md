@@ -80,6 +80,9 @@ c0              End Collection
 The transport is therefore raw 64-byte vendor reports in each direction, with no
 report IDs.
 
+Electrum lists `2581:3b7c` as "HW.1 Ledger production". See
+[Plug-up research notes](docs/plug-up.md) for the vendor ID and its history.
+
 ## X-ray imaging
 
 ![X-ray of the Ledger Nano module](xray/202610260220940004_20261103013.png)
