@@ -87,7 +87,12 @@ sub-commands and a very specific status-word layout:
 
 (`Lc=0` returns `6700` for *every* `P1` — the length check runs before the `P1`
 check, so `P1`-validity can only be told apart at `Lc`≥1. A full `P1` sweep at `Lc`≥1
-shows exactly four live sub-commands: `04`, `05`, `06`, `07`; all other `P1` → `6b00`.)
+shows exactly four live sub-commands: `04`, `05`, `06`, `07`; all other `P1` → `6b00`,
+including the `00`–`03` and `08`–`0f` neighbours. **P2 is ignored**: the four handlers
+behave identically for `P2` ∈ {`00`,`01`,`02`,`03`,`04`,`08`,`10`,`80`,`ff`}, and no P2
+value unlocks a handler at an otherwise-`6b00` `P1`. So there is no second hash
+algorithm or alternate init/update/final triplet gated behind `P1=00..03` or behind P2 —
+the decoder recognises only the contiguous `04`–`07` block.)
 
 ### Fresh-boot sequence
 
