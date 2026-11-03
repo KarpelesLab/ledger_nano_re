@@ -60,6 +60,39 @@ length byte matches its size.
 - The `D0 22` data in `init-1104` starts with `00 00 00 02 00 00 00 01`. That matches
   the spec's attestation batch 02, derivation 01.
 
+## Version-to-version comparison
+
+Offline comparison of the 1.1.0.0 to 1.1.0.4 images (`scratchpad` analysis, not a
+stored tool):
+
+- **Command layout is identical across versions.** Every `loader`, `reloader` and
+  `from-loader` list has the same sequence of command types and the same per-APDU
+  lengths in all five versions. Only the data bytes differ.
+- **1.0.2 and 1.0.3 are byte-identical** in every group. The version difference is
+  elsewhere, not in these images.
+- **Other adjacent versions share only the structural APDUs.** Between 1.0.0, 1.0.1,
+  1.0.2 and 1.0.4, only the short framing commands repeat, while the data-bearing
+  commands all differ. This fits per-build encryption, not a small code change we can
+  isolate.
+- **No shared ciphertext between 1.0.3 and 1.0.4 loaders.** No 8-byte block is common,
+  at the same offset or any offset. So we cannot locate a changed region by diffing.
+- **`init` payloads are partly cleartext.** `D0 20` begins with a fixed 20-byte value
+  across versions. From 1.0.2 on it is 0x28 bytes; 1.0.0 and 1.0.1 add an extra `D0 28`
+  block. `D0 22` always starts `00 00 00 02 00 00 00 01` then 21 varying bytes, matching
+  attestation batch 02, derivation 01. Only these trailing fields change per build.
+
+## Loader structure
+
+Each `loader` list is four repetitions of: one `E0 05` (8-byte data), many `E0 06`
+(mostly 232-byte data, one shorter), one `E0 07` (empty), one `E0 08` (8-byte data),
+ending with one `E0 09` (empty). The four `E0 06` runs hold 233, 241, 179 and 91
+packets. This looks like four loaded regions, each framed by `E0 05` and `E0 08`, with
+`E0 09` ending the sequence. These command meanings are not documented.
+
+The repeated 8-byte blocks in `loader-from-loader` are confined to its `E0 06` and
+`E0 08` data and do not recur across the four regions, so they are probably repeated
+plaintext or padding in one region, not an encryption weakness.
+
 ## Update flow
 
 From `app/src/fup/firmware_update_request.coffee`, read but not traced fully:
