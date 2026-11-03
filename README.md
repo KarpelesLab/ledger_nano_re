@@ -38,8 +38,8 @@ This is a working hypothesis, not a pinout:
 
 ## USB identity
 
-Read from a working device with `lsusb -v` and sysfs. Nothing was sent to the
-device beyond normal enumeration.
+Read from a working device with `lsusb -v` and sysfs. Only standard USB descriptor
+and status requests were used, and no HID reports were sent.
 
 | Field               | Value                                                |
 | ------------------- | ---------------------------------------------------- |
