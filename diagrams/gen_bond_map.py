@@ -55,8 +55,8 @@ CONTACTS = {"T1": (1235, 1020, "VBUS"), "T2": (1250, 700, "D-"),
             "B3": (185, 190, "B3"), "B4": (230, -144, "NC")}
 SIGNAL_TEXT = {"VBUS": "VBUS", "D-": "D-", "D+": "D+", "GND": "GND",
                "B2": "unknown", "B3": "unknown", "NC": "no wire"}
-VIA_T4 = (450, 800)
-VIA_T1 = (505, 60)
+MODULE_PAD_T4 = (450, 800)
+MODULE_PAD_T1 = (505, 60)
 
 # Traces on the module: (colour key, points)
 TRACES = [("GND", [(1228, -88), (1150, -150), (510, -180), (378, -50), (378, 640), (423, 744)]),
@@ -80,7 +80,7 @@ LABEL_AT = {1: (440, 190), 2: (1090, 262), 3: (420, 590), 4: (620, 860),
 ROWS = [(1, "B3", "unknown", "(407, 1285)", "torn pad, inferred"),
         (2, "T3", "D+", "(335, 1305)", ""),
         (3, "B2", "unknown", "(1300, 1113) or (1385, 1100)", "unresolved pair"),
-        (4, "T4 via", "GND", "(1733, 135)", ""),
+        (4, "T4 pad", "GND", "(1733, 135)", ""),
         (5, "T2", "D-", "(155, 378)", ""),
         (6, "T1", "VBUS", "(527, 318)", ""),
         (7, "T1", "VBUS", "(1300, 1113) or (1385, 1100)", "unresolved pair")]
@@ -101,11 +101,12 @@ text(-20, -296, "Same orientation as microscope/20261103_153124.JPG, which is mi
 
 for key, p in TRACES:
     add(f'<polyline points="{pts(p)}" fill="none" stroke="{COL[key]}" stroke-opacity="0.35" stroke-width="16" stroke-linejoin="round"/>')
-for v in (VIA_T4, VIA_T1):
-    key = "GND" if v == VIA_T4 else "VBUS"
+for v in (MODULE_PAD_T4, MODULE_PAD_T1):
+    key = "GND" if v == MODULE_PAD_T4 else "VBUS"
     add(f'<circle cx="{v[0]}" cy="{v[1]}" r="62" fill="{COL[key]}" fill-opacity="0.25" stroke="{COL[key]}" stroke-width="4"/>')
-text(VIA_T4[0], VIA_T4[1] + 10, "via", 26, "middle")
-text(VIA_T1[0], VIA_T1[1] + 10, "via", 26, "middle")
+text(MODULE_PAD_T4[0], MODULE_PAD_T4[1] + 10, "pad", 26, "middle")
+text(MODULE_PAD_T1[0], MODULE_PAD_T1[1] - 4, "pad", 26, "middle")
+text(MODULE_PAD_T1[0], MODULE_PAD_T1[1] + 26, "unused", 22, "middle", "#333333")
 
 for key, a, b in LANDS:
     add(f'<line x1="{a[0]}" y1="{a[1]}" x2="{b[0]}" y2="{b[1]}" stroke="{COL[key]}" stroke-opacity="0.35" stroke-width="44" stroke-linecap="round"/>')

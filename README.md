@@ -110,7 +110,7 @@ Die pad coordinates are approximate pixel positions in the unflipped
 | 1    | `B3`                 | (407, 1285)    | Torn up, no bond visible           | Inferred   |
 | 2    | `T3`                 | (335, 1305)    | Brown residue                      | Good       |
 | 3    | `B2`                 | See below      | Dark bond ball                     | Pair only  |
-| 4    | Via connected to `T4` | (1733, 135)   | Dark bond ball                     | Good       |
+| 4    | Pad connected to `T4` | (1733, 135)   | Dark bond ball                     | Good       |
 | 5    | `T2`                 | (155, 378)     | Brown residue                      | Good       |
 | 6    | `T1`                 | (527, 318)     | Dark bond ball                     | Good       |
 | 7    | `T1`                 | See below      | Dark bond ball                     | Pair only  |
@@ -121,9 +121,9 @@ Die pad coordinates are approximate pixel positions in the unflipped
   That is why only six sites are visible in the die photo.
 - The torn pad at (232, 378) has no visible wire.
 - `T1` has two bond wires, and `B1` and `B4` have none. `T4` has no direct wire
-  and reaches the die through its via.
-- Two round features are vias or similar: one connects to `T1` with no wire, and
-  one connects to `T4` with wire 4.
+  and reaches the die through its module pad.
+- The two round features are plain module pads. The one connected to `T1` is
+  unused, and the one connected to `T4` carries wire 4.
 
 This map comes from images only and has not been confirmed electrically.
 
@@ -138,7 +138,7 @@ contacts with bond wires land on die pads next to the `D+` and `VCC` pads.
 | `T1`    | `VBUS`    | 6, 7  | Only contact with two wires                       |
 | `T2`    | `D-`      | 5     | USB pin order along the `T` row                   |
 | `T3`    | `D+`      | 2     | USB pin order, and its pad neighbours wire 1      |
-| `T4`    | `GND`     | 4     | USB pin order; reaches the die through its via    |
+| `T4`    | `GND`     | 4     | USB pin order; wire 4 bonds to its module pad     |
 | `B2`    | Unknown   | 3     | Its pad neighbours the `VCC` pad of wire 7        |
 | `B3`    | Unknown   | 1     | Its pad neighbours the `D+` pad of wire 2         |
 | `B1`    | None      | None  | No bond wire                                      |
