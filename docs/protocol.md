@@ -6,7 +6,9 @@ firmware 1.0.1.
 
 On our unit, the HID framing and GET FIRMWARE VERSION worked as documented, with the
 command sent as `E0 C4 00 00 00`, as `btchip-python` does. GET OPERATION MODE
-returned `6985` for both P1 values. Everything else here is still untested.
+returned `6985` for both P1 values. VERIFY PIN with P1=`0x80` (report remaining
+attempts, `E0 22 80 00 01 00`) also returned `6985`. Both fit an unconfigured unit.
+Everything else here is still untested.
 
 ## USB HID framing
 
