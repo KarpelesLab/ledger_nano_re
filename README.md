@@ -234,7 +234,8 @@ Die pad coordinates are approximate pixel positions in the unflipped
 - The two round features are plain module pads. The one connected to `T1` is
   unused, and the one connected to `T4` carries wire 4.
 
-This map comes from images only and has not been confirmed electrically.
+This map is from images; of the nets, only `B2` and `B3` have since been probed
+electrically (see [Exposed contacts under power](#exposed-contacts-under-power)).
 
 ## Contact signals
 
@@ -248,8 +249,8 @@ contacts with bond wires land on die pads next to the `D+` and `VCC` pads.
 | `T2`    | `D-`      | 5     | USB pin order along the `T` row                   |
 | `T3`    | `D+`      | 2     | USB pin order, and its pad neighbours wire 1      |
 | `T4`    | `GND`     | 4     | USB pin order; wire 4 bonds to its module pad     |
-| `B2`    | Unknown   | 3     | Its pad neighbours the `VCC` pad of wire 7        |
-| `B3`    | Unknown   | 1     | Its pad neighbours the `D+` pad of wire 2         |
+| `B2`    | High + ~10 MHz | 3 | At VBUS (~4.97 V) with a small clock; see below   |
+| `B3`    | High + ~10 MHz | 1 | ~0.2 V below VBUS (~4.75 V) with a small clock; see below |
 | `B1`    | None      | None  | No bond wire                                      |
 | `B4`    | None      | None  | No bond wire                                      |
 
@@ -262,5 +263,41 @@ Open questions:
 - Which of wires 3 and 7 lands on (1300, 1113) and which on (1385, 1100).
 - Why `VCC` has two pads. Wire 7 crosses the whole die to reach its pad, so that
   pad seems to be needed specifically. It may be a second supply, or a tied-off
-  input such as an active-low reset.
-- What `B2` and `B3` carry.
+  input such as an active-low reset. `B2` (wire 3, pad near the `VCC` pad) sits
+  at the VBUS rail, which may be related.
+- Whether the ~10 MHz seen on `B2` and `B3` is a driven clock output or internal
+  clock activity coupling onto otherwise pulled-up pins, and the function of
+  these two contacts.
+
+## Exposed contacts under power
+
+The two unexplained contacts `B2` and `B3` were probed with a Rigol DHO924S
+(12-bit, 250 MHz) while the device was plugged into USB. `B2` is the exposed
+contact farther from `GND`; `B3` is the one nearer `GND`.
+
+Both pins sit near 0 V when the device is unplugged and rise when it is powered:
+
+| Contact             | DC level, powered          | Small-signal content         |
+| ------------------- | -------------------------- | ---------------------------- |
+| `B2` (far from GND) | ~4.97 V, at the VBUS rail  | continuous ~10 MHz, ~1.6 mVpk |
+| `B3` (near GND)     | ~4.75 V, ~0.2 V below VBUS | continuous ~10 MHz, ~0.8 mVpk |
+
+Riding on that DC level, both contacts carry a small, continuous, narrow-band
+clock. Captured AC-coupled at 625 MSa/s, the fundamental is a sharp spectral line
+150-260x above the noise floor, with a flat envelope over the capture (steady,
+not bursty) and a harmonic family near 13, 16 and ~29 MHz. The fundamental is
+not fixed: separate captures place it at 9.6, 10.1 and 10.4 MHz. That
+few-percent wander is characteristic of an on-chip RC oscillator rather than a
+crystal, which fits the absence of any bonded crystal pins and the chip's USB
+clock recovery.
+
+Two of these frequencies match the data brief: ~10 MHz is the master SPI rate,
+and ~29 MHz is the maximum CPU clock. The amplitude is only ~1-2 mV at the probe,
+so this reads as internal clock activity coupling onto high-impedance pins rather
+than a driven clock output, though probe loading could also attenuate a real
+output. The signal is stronger on `B2`.
+
+Method note: the clock is far below the vertical resolution at a scale that shows
+the 5 V rail, so a hardware frequency counter and edge trigger cannot lock onto
+it. It is recovered by AC-coupling to remove the rail, zooming to ~10 mV/div, and
+taking an FFT, which pulls the periodic line out of the quantisation floor.
