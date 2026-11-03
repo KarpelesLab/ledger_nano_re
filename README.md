@@ -3,6 +3,39 @@
 Reverse engineering of the original Ledger Nano, a legacy product with no
 display. It runs on an STMicroelectronics ST23YT66 connected directly to USB.
 
+## Chip
+
+Facts from the ST23YT66 data brief (ST Doc ID 15120 Rev 2, December 2010). The
+document is copyrighted by ST and is deliberately not stored in this repo.
+
+| Feature  | Value                                                         |
+| -------- | ------------------------------------------------------------- |
+| Package  | TSSOP20, which matches the 20 pad openings on the die          |
+| Supply   | 3 V to 5.5 V, 0 to 70 C                                        |
+| CPU      | ST23 8/16-bit, up to 29 MHz                                    |
+| Memory   | 210 KB user ROM, 6.2 KB RAM, 2 KB NESCRYPT RAM, 66 KB EEPROM   |
+| USB      | Full-speed USB 2.0 with clock recovery                         |
+| SPI      | 10 MHz master                                                  |
+| GPIO     | 12 pins: 7 bidirectional, 5 input-only                         |
+| Security | Active shield, environment monitoring, fault protection, TRNG  |
+
+The brief has no pinout. Its block diagram shows the clock generator, IART, GPIO
+and SPI sharing "multiplexed pins", while USB has its own analog transceivers.
+
+### Pin budget
+
+This is a working hypothesis, not a pinout:
+
+- `VCC`, `GND`, `D+` and `D-` take 4 pins, which leaves 16.
+- The other 16 must carry 12 GPIO plus SPI, IART, `XIN`, `XOUT` and probably a
+  reset, so at least some of these must share pins.
+- SPI needs at least one input and two outputs. The outputs (`MOSI` and `CLK`)
+  cannot use the 5 input-only GPIO. The brief describes reading a companion serial
+  flash for AutoPlay, so `MISO` is probably present.
+- Only 7 of the 20 pads are bonded in the Nano, on 6 separate nets. USB and power
+  need 4 of those nets, which leaves at most 2 for anything else. The remaining
+  13 pads are not connected to the module.
+
 ## X-ray imaging
 
 ![X-ray of the Ledger Nano module](xray/202610260220940004_20261103013.png)
