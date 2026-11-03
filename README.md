@@ -253,7 +253,7 @@ contacts with bond wires land on die pads next to the `D+` and `VCC` pads.
 | `T2`    | `D-`      | 5     | USB pin order along the `T` row                   |
 | `T3`    | `D+`      | 2     | USB pin order, and its pad neighbours wire 1      |
 | `T4`    | `GND`     | 4     | USB pin order; wire 4 bonds to its module pad     |
-| `B2`    | `RST` (likely) | 3 | 68 kohm pull-up to VCC, idles high; see below      |
+| `B2`    | Input, held high | 3 | 68 kohm pull-up to VCC; not `RST` (see below)    |
 | `B3`    | `I/O` (likely) | 1 | internal pull-up, idles high only when powered; see below |
 | `B1`    | None      | None  | No bond wire                                      |
 | `B4`    | None      | None  | No bond wire                                      |
@@ -270,8 +270,8 @@ Open questions:
   input such as an active-low reset. `B2` (wire 3, pad near the `VCC` pad) sits
   at the VBUS rail, which may be related.
 - Whether the ~10 MHz seen on `B2` and `B3` is a driven clock output or internal
-  clock activity coupling onto high-impedance pins. (The pins themselves are now
-  identified as `RST` and `I/O`; see
+  clock activity coupling onto high-impedance pins. (`B3` is the open-drain `I/O`;
+  `B2` is a held-high input, not `RST`, plausibly `CLK`; see
   [DC resistance and pin identity](#dc-resistance-and-pin-identity).)
 
 ## Exposed contacts under power
@@ -332,8 +332,10 @@ input diodes: these are protected signal pins, not bare rails.
 | `B2` -> `B3` | 30 Mohm    |
 
 `B2` has a fixed ~68 kohm pull-up to VCC and is otherwise high-impedance; powered,
-it sits right at VCC. That is the signature of an **active-low reset (`RST`) held
-inactive by a pull-up**. `B3` has no low-value resistor to either rail when
+it sits right at VCC. A 68 kohm pull-up on a held-high input first looked like an
+active-low reset (`RST`), but **briefly grounding `B2` produced no USB reset or
+re-enumeration**, so it is more likely an unused held-high input such as the
+smartcard clock (`CLK`) than `RST`. `B3` has no low-value resistor to either rail when
 unpowered (9 / 8.6 Mohm), yet rises to ~4.75 V once powered: an **internal pull-up
 that is only active under power**, i.e. an **open-drain line such as the smartcard
 `I/O`**. The slow recovery of `B3` after the command dip is that weak internal
@@ -343,10 +345,12 @@ This resolves the two extra contacts. The module is an ISO 7816 smartcard module
 (eight contacts in two rows of four), and the ST23YT66 is a smartcard MCU. When it
 is plugged into USB-A only one row of contacts mates with the four USB pins; the
 other row carries the chip's smartcard-interface pins. `B2` and `B3` are two of
-those, left unused in USB mode: `B2` behaves as `RST`, `B3` as `I/O`. Naming
-`RST` versus another reset-like input, and `I/O` versus another open-drain pin, is
-inferred from the electrical behaviour and smartcard convention, not from
-exercising the pins.
+those, left unused in USB mode. `B3` behaves as the open-drain `I/O` line. `B2` is
+a high-impedance input held at VCC through 68 kohm; grounding it does not reset the
+device, so it is probably `CLK` or another unused smartcard input rather than
+`RST`. These names are inferred from electrical behaviour and smartcard
+convention; only the open-drain character of `B3` and the no-reset result for `B2`
+were directly tested.
 
 Method note: the clock is far below the vertical resolution at a scale that shows
 the 5 V rail, so a hardware frequency counter and edge trigger cannot lock onto
