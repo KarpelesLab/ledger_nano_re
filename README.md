@@ -16,5 +16,41 @@ Initial observations from the image, not yet checked against the physical device
   and bottom edges of the module.
 - Two more round features sit near the centre, just above the split between the
   two rows.
-- Thin wires, probably bond wires, are faintly visible in the central area.
+- Thin bond wires are faintly visible in the central area, running from the
+  contact traces to the die. About six can be followed, but their die ends are
+  hard to resolve.
+- Two of the wires appear to start from the same landing on the top-left contact.
 - A fainter rectangular shape extends below the module.
+
+## Die photo
+
+![Microscope photo of the die](microscope/die_top.png)
+
+`microscope/die_top.png` (2000 x 1412 px, no scale reference)
+
+Optical microscope image of the die, which appears to be stitched from several
+fields. It is mirrored relative to the X-ray. To compare them, flip it
+horizontally:
+
+```sh
+magick microscope/die_top.png -flop die_top_flopped.png
+```
+
+The die was extracted mechanically with a knife, not chemically. The cracks,
+gouges and missing fragments on its surface come from that extraction, so they
+are not device features.
+
+Six bond wire sites are visible, out of 20 pad openings along the two long edges.
+Pixel coordinates are for the unflipped image and are approximate:
+
+| Edge   | Position (x, y) | Appearance                   |
+| ------ | --------------- | ---------------------------- |
+| Top    | (155, 378)      | Brown residue, near the edge |
+| Top    | (527, 318)      | Dark bond ball               |
+| Top    | (1733, 135)     | Dark bond ball, corner       |
+| Bottom | (335, 1305)     | Brown residue, near the edge |
+| Bottom | (1300, 1113)    | Dark bond ball               |
+| Bottom | (1385, 1100)    | Dark bond ball, pad damaged  |
+
+The wire locations look broadly similar in the X-ray and the mirrored photo, but
+each wire has not yet been matched to a specific pad.
