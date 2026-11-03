@@ -1,7 +1,8 @@
 # Firmware updates
 
 Newer firmware images are public in Ledger's archived
-[`ledger-wallet-chrome`][repo] repo, under `app/firmwares`. They are not stored here.
+[`ledger-wallet-chrome`][repo] repo, under `app/firmwares`. Local copies go in
+`firmware/`, which is gitignored, so they are not stored in this repo.
 Our test unit reports firmware 1.0.1, and the newest image is 1.0.4.
 
 ## Versions
@@ -23,7 +24,7 @@ architecture byte our unit returns. Older HW.1 versions (1.4.x) use `0x00`.
 
 Each version has these files, as lists of APDUs in hex:
 
-| File                 | Commands seen                  | Size for 1.0.4 |
+| File                 | Commands seen                  | Hex text, 1.0.4 |
 | -------------------- | ------------------------------ | -------------- |
 | `reloader`           | `D0 42 06 00`                  | About 8 KB     |
 | `loader`             | `E0 05` to `E0 09`             | About 117 KB   |
