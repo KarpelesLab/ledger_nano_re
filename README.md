@@ -275,6 +275,12 @@ The two unexplained contacts `B2` and `B3` were probed with a Rigol DHO924S
 (12-bit, 250 MHz) while the device was plugged into USB. `B2` is the exposed
 contact farther from `GND`; `B3` is the one nearer `GND`.
 
+![Wires soldered to the exposed contacts for probing](microscope/contacts_probed.jpg)
+
+`microscope/contacts_probed.jpg` (RaySmart VMS700; source: the project owner,
+2026-11-04) shows fine wires soldered to the two exposed contacts on the 0.1 mm
+grid, with the scope probes attached.
+
 Both pins sit near 0 V when the device is unplugged and rise when it is powered:
 
 | Contact             | DC level, powered          | Small-signal content         |
@@ -296,6 +302,15 @@ and ~29 MHz is the maximum CPU clock. The amplitude is only ~1-2 mV at the probe
 so this reads as internal clock activity coupling onto high-impedance pins rather
 than a driven clock output, though probe loading could also attenuate a real
 output. The signal is stronger on `B2`.
+
+Sending a read-only APDU (`E0 C4`, GET FIRMWARE VERSION) over USB produces a
+brief current transient on both contacts. They sag together to a common ~4.6 V
+floor for roughly 1-2 us and then recover: `B2` drops ~345 mV and springs back
+within ~2-3 us, while `B3` drops ~140 mV and recovers more slowly. The shared
+floor and `B2`'s fast recovery read as a ~0.3 V sag of the VBUS rail under the
+MCU's current surge, with `B2` tracking the rail directly and `B3` behaving like
+a higher-impedance pin with a weak pull-up. This fits the DC levels: `B2` sits at
+the rail, `B3` about 0.2 V below it.
 
 Method note: the clock is far below the vertical resolution at a scale that shows
 the 5 V rail, so a hardware frequency counter and edge trigger cannot lock onto
