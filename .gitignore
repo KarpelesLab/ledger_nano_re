@@ -1,1 +1,3 @@
 firmware/
+tools/fullsweep/target/
+__pycache__/
