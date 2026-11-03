@@ -59,8 +59,13 @@ The merged raw output is [tools/fullsweep/tsv/full_65536_p12_0_l0.tsv](../tools/
 `E0 D0` returned `6700` at `Lc=0` (implemented, data-dependent) but appears **nowhere**
 in the spec (§§19–25.6). Its neighbours `E0 CF` and `E0 D1` are `6d00`, so it is a
 genuine stand-alone handler, not a `P1`/`P2` variant missed by the `P1=P2=0` probe. It
-sits in the `D0`–`DF` range the spec never assigns — a candidate for a private / debug
-"SET" command.
+sits in the `D0`–`DF` range the spec never assigns.
+
+**It is a SHA-256 engine** (confirmed byte-for-byte against a reference
+implementation — see "Confirmed: SHA-256 engine" below). The 96-byte `P1=06`
+body is the engine's working context: a 64-byte message-block buffer followed by
+the 32-byte hash state. `P1=05` initialises it (state ← SHA-256 IV); `P1=06`
+streams data in and auto-compresses every 64 bytes.
 
 All matrices were captured on a **warmed** device (i.e. after several successful
 APDUs). A fresh, immediately-after-power-cycle device shows a different initial
@@ -73,9 +78,9 @@ sub-commands and a very specific status-word layout:
 | ---- | --------------------------------- | ---------------------------------------- |
 | `00` | `Lc=0`→`6700`, `Lc>0`→`6b00`      | invalid P1                               |
 | `01`–`03`, `08`, `10`… | `6b00` (all `Lc`) | invalid P1                               |
-| `04` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | "ack / write" sub-command (any `Lc` accepted) |
-| `05` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | "ack / write" sub-command (any `Lc` accepted) |
-| `06` | `Lc=0`→`6700`; `Lc≥1`→`9000, 96`  | "read+dump" sub-command (returns 96 bytes) |
+| `04` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | write to a separate slot; does **not** touch the SHA state or block buffer (purpose open) |
+| `05` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | **SHA-256 init**: state ← IV, block buffer + offset cleared (needs `Lc`≥16) |
+| `06` | `Lc=0`→`6700`; `Lc≥1`→`9000, 96`  | **SHA-256 update + dump**: write `Lc` bytes into the block, compress on fill, return 64-byte block + 32-byte state |
 
 ### Fresh-boot sequence
 
@@ -96,14 +101,15 @@ defines `6fxx` as **"Technical problem (Internal error, please report)"** — so
 `6faa` that the whole device falls into afterwards. Reproducible across every
 fresh-boot capture this session.
 
-**Priming rule (confirmed by A/B testing on fresh boots).** A `P1=04` or `P1=05`
-write with `Lc` ≥ 16 primes the scratch pad so that the *next* `P1=06` read returns
-`9000` with the usual 96-byte body instead of `6f02`. A `P1=04`/`P1=05` write with
-`Lc=1` does **not** prime (the first subsequent `P1=06` still returns `6f02`). The
-primiting call consumes its own payload into an internal slot — we did not see the
-`P1=04`/`P1=05` payload land in the 64-byte scratch dump on subsequent `P1=06` reads,
-so the two writes are independent of the scratch buffer (they appear to be a small
-separate scratch area, or a register write).
+**Priming rule (confirmed by A/B testing on fresh boots).** The SHA-256 context
+must be **initialised** (`P1=05`, `Lc`≥16) before the first `P1=06` read, or that
+read returns `6f02` and the device wedges into all-`6faa` until a USB unplug.
+`P1=05` is the real init: it resets the hash state to the IV and clears the block
+buffer. A write with `Lc=1` does **not** init (the subsequent `P1=06` still returns
+`6f02`); `Lc`≥16 is required. The known-good fresh-boot sequence used `P1=04` then
+`P1=05` (both `Lc`≥16), but `P1=05` alone does the reset — see the role test below.
+`P1=04` leaves the SHA state and block buffer untouched (it writes some other,
+still-unidentified slot), so it is not what primes the engine.
 
 ```
 fresh boot:  P1=04 Lc=1  data=00           -> 9000, 0    (not a priming write)
@@ -138,55 +144,68 @@ plain-`6d00` "not this INS"-style responses, consistent with the `E0 20..C6` han
 map elsewhere in this document.
 
 P2 is **ignored** by all three (identical responses for P2=`00`/`01`/`02`/`80`). The
-96-byte `P1=06` response is split into two fields:
+96-byte `P1=06` response is the SHA-256 working context, split into two fields:
 
 ```
-offset 0..63   : a 64-byte persistent scratch buffer  (see below)
-offset 64..95  : a 32-byte non-zero value  (e.g. 6a 09 e6 67 bb 67 ae 85 3c 6e f3
-                 72 a5 4f f5 3a 51 0e 52 7f 9b 05 68 8c 1f 83 d9 ab 5b e0 cd 19)
+offset 0..63   : the 64-byte SHA-256 message-block buffer (fills with streamed input)
+offset 64..95  : the 32-byte SHA-256 hash state (the eight 32-bit words H0..H7, big-endian)
 ```
 
-**The 64-byte scratch buffer.** It is *not* a one-shot echo — it is a persistent work
-buffer that **accumulates** across `P1=06` calls and is only cleared on a power cycle.
-On each `P1=06` call the command appends the `Lc`-byte request data **twice** at the
-current write offset (advancing by `2*Lc`). After a fresh power cycle the buffer reads
-all zero; each subsequent call appends behind the previous content. Reproducing the
-observed sequence (fresh device):
+### Confirmed: SHA-256 engine
+
+The 32-byte state field is a live **SHA-256 hash state register**. Right after a
+`P1=05` init it reads the FIPS 180-4 initial hash value:
 
 ```
-send  Lc=4 ab cd ef 01  ->  buf: ab cd ef 01 ab cd ef 01 ...
-send  Lc=2 b2 c3        ->  buf: ab cd ef 01 ab cd ef 01 b2 c3 b2 c3 ...
-send  Lc=1 d4           ->  buf: ... b2 c3 b2 c3 d4 d4 ...
+6a09e667 bb67ae85 3c6ef372 a54ff53a 510e527f 9b05688c 1f83d9ab 5be0cd19
 ```
 
-(each line shows the growing tail; the buffer is dumped back to the host verbatim on
-every `P1=06` response). This makes `P1=06` behave like a "append to RAM scratchpad
-and dump the pad" primitive.
+**The 64-byte buffer is a streaming message block, not a doubling scratchpad.** Each
+`P1=06` writes its `Lc` payload bytes **once** at a rolling write offset (advancing by
+`Lc`, *not* `2*Lc` — the earlier "append twice" reading was an artifact; the single-write
+model is what reproduces the hash exactly). When the offset reaches 64 the engine runs
+one **SHA-256 compression** of that block into the state and resets the offset. So the
+command is a standard streaming SHA update: push bytes, compress every 64.
 
-**The 32-byte tail value.** From repeated clean reads:
+**Byte-for-byte verification.** After `P1=05` init (state = IV), feeding three
+64-byte blocks and reading the state after each reproduces the SHA-256 midstate chain
+exactly (device output == reference `compress()` in Python, all matches):
 
-- **Stable** across repeated `P1=06` reads, across `Lc` (`1`/`2`/`4`/`8`/`16`/`32`/`48`),
-  across `P2`, and across `P1=04` / `P1=05` writes with an `Lc=1` zero payload. Six
-  back-to-back reads returned byte-identical tails.
-- **Not** `SHA256` of the empty field, the input data, or any obvious hash of
-  `Lc`/P1/P2 (checked against six candidate inputs).
-- **Not** a fixed ROM constant: over the session the value was observed to take
-  different stable values in turn (`ec a0 44…` → `4d 65 87…` → `6a 09 e6…`). Each was
-  held for many operations before changing. The change coincided with device-state
-  transitions (power-cycles / clear-halt after the transient all-`6faa` wedges), so
-  the value is a **stored, reset-dependent value** — plausibly an NVRAM counter, a
-  ROM-derived fingerprint re-seeded on power-up, or a one-time-pad / nonce state.
-  It is the strongest direct "device identity / state" reading available outside the
-  attestation signature, consistent with a private/debug `E0 D0` handler.
+```
+block0 = 00 01 .. 3f                     -> state fc99a2df 88f42a7a 7bb9d180 33cdc6a2 0256755f 9d5b9a50 44a9cc31 5abe84a7
+block1 = de*32 ad*32                     -> state a589869b 6df97fe1 d0f214ad 2a918362 e6eb45af ed5af10a bc7ea71d c1a6c8f7
+block2 = 40 41 .. 5f 55*32               -> state fca1cbb3 b99c5900 80c8e166 890e9449 ca784ddb 1dad4b72 f25f1933 8280e020
+```
 
-  (Early in the session an awk-based parser reported spurious per-read churn; clean
-  byte-level parsing shows the value is in fact flat across a run. The genuine
-  transitions were the power-cycle-related ones above.)
+Each equals `compress(previous_state, block)`, i.e. the SHA-256 intermediate hash
+after absorbing that block. (This is the raw compression / midstate — the length
+padding of a full `SHA256()` is never applied, because the engine only ever exposes the
+block-level update, not a finalize.) See `tools/sha_test.py` for the driver and the
+reference compression used to check it.
 
-`P1=04` and `P1=05` return `9000` with no body for any `Lc`≥1 regardless of `P2` —
-consistent with **write/set** sub-commands that consume `Lc` bytes of input and return
-nothing. They were only probed with zero payloads; whether non-zero `P1=04`/`P1=05`
-data mutates the `P1=06` value (and thus what the command *does*) is still open.
+The different 32-byte values seen across the earlier session (`ec a0 44…`,
+`4d 65 87…`, `6a 09 e6…`) were **not** an NVRAM nonce or device fingerprint — they were
+simply whatever midstate the firmware had left in the SHA register at the moment of
+reading (e.g. after a boot-time or attestation hash), with `6a 09 e6…` being the
+clean post-init IV. The value is stable within a run only because, without a block
+completing, no compression fires.
+
+### Sub-command roles (confirmed by a controlled A/B test)
+
+- **`P1=05`** (`Lc`≥16) = **SHA-256 init/reset**. After it, the state is the IV and the
+  block buffer + offset are cleared to zero, regardless of the prior state.
+- **`P1=06`** = **update + dump**. Writes `Lc` bytes into the block at the offset,
+  compresses on fill, returns the 64-byte block and 32-byte state.
+- **`P1=04`** (`Lc`≥16) = returns `9000` but leaves **both** the SHA state and the block
+  buffer unchanged (verified: state held at `52465800…`, earlier `cc` bytes still in the
+  buffer with the new byte appended after them). It writes some other, still-unidentified
+  slot — possibly a key/IV override for an HMAC or custom-IV mode that no exposed
+  sub-command reads back. Its purpose is **open**.
+
+There is **no finalize sub-command** in the exposed set: the engine streams and reports
+midstate, but nothing applies SHA length-padding or returns a finished digest. Whatever
+uses `E0 D0` internally (firmware integrity, attestation, a BIP32/HMAC primitive) owns
+the finalize step; `E0 D0` just exposes the compression core.
 
 ### Spec commands not implemented in 1.0.1
 
@@ -205,9 +224,9 @@ Sending zeroed data of varying `Lc`:
   **FIRMWARE UPDATE / bootloader entry**: P1=`03` start, P1=`06` load, variable `Lc`,
   available only before setup. P1/P2 = `00 00` is therefore rejected.
 - `E0 20` (SETUP) → `6a80` Invalid data.
- - `E0 D0` (undocumented) → `6700` at `Lc=0`; fully characterised above (three
-   sub-commands `P1=04/05/06`, the `P1=06` read returning a 96-byte body with a
-   deterministic 32-byte device blob).
+ - `E0 D0` (undocumented) → `6700` at `Lc=0`; a **SHA-256 engine**, fully characterised
+   above (`P1=05` init, `P1=06` streaming update+dump returning the 64-byte block buffer
+   and 32-byte hash state, `P1=04` a separate slot write).
 - All the other even-instruction `E0`s → `6985`.
 
 `6a80` and `6b00` are both defined in spec §27 as distinct status words; neither was
@@ -256,7 +275,7 @@ enabled in 1.0.1).
 | `E0 c4` | GET FIRMWARE VERSION (§24.3) | `9000` |
 | `E0 c6` | COMPOSE M OF N ADDRESS (§24.4) | `6700` at `Lc=0`, `6d00` with data |
 | `E0 ca` | GET POINT OF SALE SEED (§24.5) | `9000`, empty |
-| `E0 d0` | **undocumented** (spec §§19–25.6) | `Lc=0`→`6700`; `P1=04/05` `Lc≥1`→`9000 0`; `P1=06` `Lc≥1`→`9000` 96 bytes (64 zero + 32-byte device blob) |
+| `E0 d0` | **undocumented** — SHA-256 engine (spec §§19–25.6) | `Lc=0`→`6700`; `P1=05` `Lc≥16`→init (state=IV); `P1=06` `Lc≥1`→`9000` 96 bytes (64-byte message block + 32-byte hash state, compresses on fill); `P1=04` `Lc≥1`→`9000 0` (separate slot) |
 | `D0 20` | FACTORY INIT KEYS (§25.1) | `6985` |
 | `D0 22` | FACTORY INIT ATTESTATION (§25.2) | `6985` |
 | `D0 24` | GET FIRMWARE UPDATE ID (§25.3) | `9000` `00 00 00 00 00 00 00 01` |

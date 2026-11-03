@@ -95,7 +95,12 @@ the operation mode and second factor queries. The spec documents this command as
 available after setup, and does not list `6985`. This fits the unit's history: it is
 brand new and has never been set up.
 
-The framing and commands are summarised in [Host protocol](docs/protocol.md).
+The framing and commands are summarised in [Host protocol](docs/protocol.md). A full
+`(CLA, INS)` sweep turned up one command absent from the spec, `E0 D0`, which proves to
+be a **SHA-256 engine** (streaming compression core: `P1=05` inits to the SHA-256 IV,
+`P1=06` streams data and exposes the 64-byte message block plus 32-byte hash state,
+compressing on every full block). This is confirmed byte-for-byte against a reference
+implementation by [`tools/sha_test.py`](tools/sha_test.py); details in the protocol doc.
 See [Firmware updates](docs/firmware.md) for newer firmware.
 
 Electrum lists `2581:3b7c` as "HW.1 Ledger production". See
