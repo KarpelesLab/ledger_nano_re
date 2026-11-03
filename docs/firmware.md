@@ -32,11 +32,33 @@ Each version has these files, as lists of APDUs in hex:
 | `*-from-loader`      | Not examined                   | About 7-9 KB   |
 
 - The spec describes update data as 3DES-CBC encrypted with a diversified firmware
-  update key, with a CRC-16 of the cleartext. The images look encrypted, so they
-  should not be expected to disassemble. Their entropy has not been measured.
+  update key, with a CRC-16 of the cleartext. The measurements below fit that, so
+  the images should not be expected to disassemble.
 - The spec describes encryption, not signing.
 - A target key is disabled after 10 invalid CRC-16 values in sequence, so bad images
   can permanently block updates.
+
+## Binary form
+
+`tools/fw_to_bin.py` converts each list into `firmware/bin/NAME.apdu`, the APDUs as
+listed, and `NAME.data`, only their data fields. All 75 lists parse, and every APDU's
+length byte matches its size.
+
+| Group                | Data bytes | Entropy (bits/byte) | Repeated 8-byte blocks |
+| -------------------- | ---------- | ------------------- | ---------------------- |
+| `loader`             | 56,592     | 8.00                | 0                      |
+| `loader-from-loader` | 3,936      | 7.94-7.96           | 5                      |
+| `reloader`           | 3,782      | 7.95-7.96           | 0                      |
+| `reloader-from-loader` | 3,224    | 7.93-7.95           | 0                      |
+| `init`               | 83-158     | 5.42-6.58           | 0                      |
+
+- Sizes are the same across every firmware version in each group except `init`.
+- Each `loader` has 4 `E0 05`, 246 `E0 06`, 4 `E0 07`, 4 `E0 08` and 1 `E0 09`, which
+  may mean four loaded regions. The meaning of these commands is not documented.
+- The 56,592-byte `loader` would fit in the 66 KB EEPROM, which may be where updated
+  firmware lives. This is unconfirmed.
+- The `D0 22` data in `init-1104` starts with `00 00 00 02 00 00 00 01`. That matches
+  the spec's attestation batch 02, derivation 01.
 
 ## Update flow
 
