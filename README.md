@@ -122,24 +122,31 @@ Die pad coordinates are approximate pixel positions in the unflipped
 
 This map comes from images only and has not been confirmed electrically.
 
-## Tracing from the USB plug
+## Contact signals
 
-Reported from tracing the module back from the USB plug. Contact names are not
-recorded yet.
+The module plugs directly into a USB-A slot, with the plug upside down, so its
+contacts are the USB pins. `VCC` feeds two die pads. The two other exposed
+contacts with bond wires land on die pads next to the `D+` and `VCC` pads.
 
-- `VCC` feeds two die pads. `T1` is the only contact with two wires, so it is the
-  likely candidate, but this has not been confirmed.
-- `GND`, `D+` and `D-` account for one pad each.
-- Two pads are unknown. One is routed near USB `D+`, and the other near `VCC`.
-  Neither is known to connect to them.
+| Contact | Signal    | Wires | Basis                                             |
+| ------- | --------- | ----- | ------------------------------------------------- |
+| `T1`    | `VBUS`    | 6, 7  | Only contact with two wires                       |
+| `T2`    | `D-`      | 5     | USB pin order along the `T` row                   |
+| `T3`    | `D+`      | 2     | USB pin order, and its pad neighbours wire 1      |
+| `T4`    | `GND`     | 4     | USB pin order; reaches the die through its via    |
+| `B2`    | Unknown   | 3     | Its pad neighbours the `VCC` pad of wire 7        |
+| `B3`    | Unknown   | 1     | Its pad neighbours the `D+` pad of wire 2         |
+| `B1`    | None      | None  | No bond wire                                      |
+| `B4`    | None      | None  | No bond wire                                      |
 
-Hypotheses, none tested:
+The assignment assumes the `T` row is the four USB pins. The only two adjacent
+bonded pad pairs on the die are wires 2 and 1, and wires 7 and 3, which matches
+the adjacency described above.
 
-- The second `VCC` pad may be a tied-off input rather than a second supply. An
-  extra supply pad would be odd with only one `GND` pad. An active-low reset held
-  inactive would fit.
-- The unknown pad near `D+` may control a USB pull-up, through a resistor to
-  `D+`. Full-speed USB devices need about 1.5 kohm on `D+`. A reading near that
-  value would support this.
-- The unknown pad near `VCC` may be a similar strap, or a test or programming
-  point.
+Open questions:
+
+- Which of wires 3 and 7 lands on (1300, 1113) and which on (1385, 1100).
+- Why `VCC` has two pads. Wire 7 crosses the whole die to reach its pad, so that
+  pad seems to be needed specifically. It may be a second supply, or a tied-off
+  input such as an active-low reset.
+- What `B2` and `B3` carry.
