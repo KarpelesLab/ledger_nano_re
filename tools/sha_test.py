@@ -10,18 +10,24 @@ Sub-commands:
     P1=06 (Lc>=1)  : write Lc bytes into the block at the offset; when the block
                      fills to 64 bytes, run one SHA-256 compression into the state;
                      return the 64-byte block + 32-byte state
+    P1=07 (Lc>=1)  : finalize -> return SHA256(SHA256(message)), the double-SHA-256
+                     of the whole streamed message (own Lc data ignored, MD padding
+                     applied internally). This is the Bitcoin hash.
     P1=04 (Lc>=16) : writes a separate, still-unidentified slot (purpose open);
                      leaves the SHA state and block buffer untouched
 
-This script inits the engine, streams three known 64-byte blocks, and checks that
-the device's hash state after each block equals compress(previous_state, block)
-from the reference SHA-256 compression below.
+This script runs two checks:
+  1. inits, streams three known 64-byte blocks, and checks the device's hash state
+     after each equals compress(previous_state, block) from the reference below;
+  2. inits, streams several messages of varying length, finalizes with P1=07, and
+     checks the result equals SHA256(SHA256(message)).
 
 Transport: shells out to the `fullsweep` tool (usbfs, no root needed). Build it with
     cargo build --release --manifest-path tools/fullsweep/Cargo.toml
 Run from the repo root:
     python3 tools/sha_test.py
 """
+import hashlib
 import os
 import subprocess
 
@@ -86,21 +92,32 @@ def device_state(body):
     return body[64:96] if len(body) >= 96 else None
 
 
-def main():
+def init():
     # init (P1=05, Lc>=16); the leading P1=04 matches the observed fresh-boot recipe
     send(0x04, b"\x01" * 16)
-    sw, _ = send(0x05, b"\x01" * 16)
-    print(f"init P1=05 -> {sw}")
+    return send(0x05, b"\x01" * 16)[0]
 
-    # three known 64-byte blocks, streamed as 32+32 (each P1=06 writes once)
+
+def stream(msg):
+    i = 0
+    last = b""
+    while i < len(msg):
+        _, last = send(0x06, msg[i:i + 32])
+        i += 32
+    return last
+
+
+def main():
+    ok = True
+
+    # --- check 1: streaming midstate chain (P1=06) ---
+    print(f"init P1=05 -> {init()}")
     blocks = [
         bytes(range(0x00, 0x40)),              # 00 01 .. 3f
         bytes([0xde] * 32) + bytes([0xad] * 32),
         bytes(range(0x40, 0x60)) + bytes([0x55] * 32),
     ]
-
     chain = IV[:]
-    ok = True
     for i, blk in enumerate(blocks):
         send(0x06, blk[:32])                   # first half (offset 0 -> 32)
         _, body = send(0x06, blk[32:])         # second half completes the block -> compress
@@ -109,10 +126,26 @@ def main():
         want = state_bytes(chain)
         match = got == want
         ok &= match
-        print(f"block{i}: device={got.hex() if got else '??'} expected={want.hex()} "
+        print(f"  block{i}: device={got.hex() if got else '??'} expected={want.hex()} "
               f"{'MATCH' if match else 'MISMATCH'}")
 
-    print("\nE0 D0 confirmed as a SHA-256 engine." if ok else "\nMISMATCH - see output above.")
+    # --- check 2: SHA256d finalize (P1=07) ---
+    print("finalize check (P1=07 = SHA256d):")
+    msgs = [b"", b"\x11" * 16, bytes(range(64)), b"hello world",
+            b"\xab" * 100, bytes(range(200))]
+    for m in msgs:
+        init()
+        stream(m)
+        _, body = send(0x07, b"\x00")          # Lc>=1 required; data ignored
+        want = hashlib.sha256(hashlib.sha256(m).digest()).digest()
+        match = body == want
+        ok &= match
+        label = m.hex() if len(m) <= 16 else f"{len(m)}B:{m[:8].hex()}..."
+        print(f"  msg={label:22} device={body.hex()} sha256d={want.hex()} "
+              f"{'MATCH' if match else 'MISMATCH'}")
+
+    print("\nE0 D0 confirmed: SHA-256 engine (P1=06) + SHA256d finalize (P1=07)."
+          if ok else "\nMISMATCH - see output above.")
     return 0 if ok else 1
 
 

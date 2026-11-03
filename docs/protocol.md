@@ -61,11 +61,13 @@ in the spec (§§19–25.6). Its neighbours `E0 CF` and `E0 D1` are `6d00`, so i
 genuine stand-alone handler, not a `P1`/`P2` variant missed by the `P1=P2=0` probe. It
 sits in the `D0`–`DF` range the spec never assigns.
 
-**It is a SHA-256 engine** (confirmed byte-for-byte against a reference
-implementation — see "Confirmed: SHA-256 engine" below). The 96-byte `P1=06`
-body is the engine's working context: a 64-byte message-block buffer followed by
-the 32-byte hash state. `P1=05` initialises it (state ← SHA-256 IV); `P1=06`
-streams data in and auto-compresses every 64 bytes.
+**It is a Bitcoin hashing accelerator — a SHA-256 engine with a SHA256d finalize**
+(confirmed byte-for-byte against a reference implementation — see "Confirmed: SHA-256
+engine" below). The 96-byte `P1=06` body is the engine's working context: a 64-byte
+message-block buffer followed by the 32-byte hash state. `P1=05` initialises it
+(state ← SHA-256 IV); `P1=06` streams data in and auto-compresses every 64 bytes;
+`P1=07` finalises and returns `SHA256(SHA256(message))`, the double-SHA-256 used
+throughout Bitcoin (txids, block hashes, Base58Check).
 
 All matrices were captured on a **warmed** device (i.e. after several successful
 APDUs). A fresh, immediately-after-power-cycle device shows a different initial
@@ -81,6 +83,11 @@ sub-commands and a very specific status-word layout:
 | `04` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | write to a separate slot; does **not** touch the SHA state or block buffer (purpose open) |
 | `05` | `Lc=0`→`6700`; `Lc≥1`→`9000, 0`   | **SHA-256 init**: state ← IV, block buffer + offset cleared (needs `Lc`≥16) |
 | `06` | `Lc=0`→`6700`; `Lc≥1`→`9000, 96`  | **SHA-256 update + dump**: write `Lc` bytes into the block, compress on fill, return 64-byte block + 32-byte state |
+| `07` | `Lc=0`→`6700`; `Lc≥1`→`9000, 32`  | **SHA256d finalize**: return `SHA256(SHA256(message))` of the whole streamed message (own `Lc` data ignored) |
+
+(`Lc=0` returns `6700` for *every* `P1` — the length check runs before the `P1`
+check, so `P1`-validity can only be told apart at `Lc`≥1. A full `P1` sweep at `Lc`≥1
+shows exactly four live sub-commands: `04`, `05`, `06`, `07`; all other `P1` → `6b00`.)
 
 ### Fresh-boot sequence
 
@@ -196,16 +203,23 @@ completing, no compression fires.
   block buffer + offset are cleared to zero, regardless of the prior state.
 - **`P1=06`** = **update + dump**. Writes `Lc` bytes into the block at the offset,
   compresses on fill, returns the 64-byte block and 32-byte state.
+- **`P1=07`** (`Lc`≥1, data ignored) = **SHA256d finalize**. Applies SHA-256 MD
+  length-padding to the whole streamed message, hashes, then hashes the 32-byte digest
+  again, and returns the 32-byte `SHA256(SHA256(message))`. Verified against a reference
+  for the empty message, a 16-byte message, a full 64-byte block, and 100- and 200-byte
+  messages (all byte-for-byte; see `tools/sha_test.py`). Its own `Lc` payload is a dummy
+  (only needed to pass the `Lc`≥1 length gate) — the output depends solely on what was
+  streamed via `P1=06`. Empty-message value is `5df6e0e2…9456` = `SHA256(SHA256(""))`.
 - **`P1=04`** (`Lc`≥16) = returns `9000` but leaves **both** the SHA state and the block
   buffer unchanged (verified: state held at `52465800…`, earlier `cc` bytes still in the
   buffer with the new byte appended after them). It writes some other, still-unidentified
   slot — possibly a key/IV override for an HMAC or custom-IV mode that no exposed
   sub-command reads back. Its purpose is **open**.
 
-There is **no finalize sub-command** in the exposed set: the engine streams and reports
-midstate, but nothing applies SHA length-padding or returns a finished digest. Whatever
-uses `E0 D0` internally (firmware integrity, attestation, a BIP32/HMAC primitive) owns
-the finalize step; `E0 D0` just exposes the compression core.
+So `E0 D0` is a complete Bitcoin-style hash primitive: init (`05`), streaming update
+exposing the live midstate (`06`), and double-SHA-256 finalize (`07`). The exposed
+single-SHA digest is only ever the midstate via `P1=06`; `P1=07` is the one that applies
+padding and returns a finished (double) digest.
 
 ### Spec commands not implemented in 1.0.1
 
@@ -224,9 +238,10 @@ Sending zeroed data of varying `Lc`:
   **FIRMWARE UPDATE / bootloader entry**: P1=`03` start, P1=`06` load, variable `Lc`,
   available only before setup. P1/P2 = `00 00` is therefore rejected.
 - `E0 20` (SETUP) → `6a80` Invalid data.
- - `E0 D0` (undocumented) → `6700` at `Lc=0`; a **SHA-256 engine**, fully characterised
-   above (`P1=05` init, `P1=06` streaming update+dump returning the 64-byte block buffer
-   and 32-byte hash state, `P1=04` a separate slot write).
+ - `E0 D0` (undocumented) → `6700` at `Lc=0`; a **Bitcoin hashing accelerator**, fully
+   characterised above (`P1=05` init, `P1=06` streaming update+dump returning the 64-byte
+   block buffer and 32-byte hash state, `P1=07` SHA256d finalize, `P1=04` a separate slot
+   write).
 - All the other even-instruction `E0`s → `6985`.
 
 `6a80` and `6b00` are both defined in spec §27 as distinct status words; neither was
@@ -275,7 +290,7 @@ enabled in 1.0.1).
 | `E0 c4` | GET FIRMWARE VERSION (§24.3) | `9000` |
 | `E0 c6` | COMPOSE M OF N ADDRESS (§24.4) | `6700` at `Lc=0`, `6d00` with data |
 | `E0 ca` | GET POINT OF SALE SEED (§24.5) | `9000`, empty |
-| `E0 d0` | **undocumented** — SHA-256 engine (spec §§19–25.6) | `Lc=0`→`6700`; `P1=05` `Lc≥16`→init (state=IV); `P1=06` `Lc≥1`→`9000` 96 bytes (64-byte message block + 32-byte hash state, compresses on fill); `P1=04` `Lc≥1`→`9000 0` (separate slot) |
+| `E0 d0` | **undocumented** — Bitcoin hash accelerator (spec §§19–25.6) | `Lc=0`→`6700`; `P1=05` `Lc≥16`→init (state=IV); `P1=06` `Lc≥1`→`9000` 96 bytes (64-byte message block + 32-byte hash state, compresses on fill); `P1=07` `Lc≥1`→`9000` 32 bytes (SHA256d of streamed message); `P1=04` `Lc≥1`→`9000 0` (separate slot) |
 | `D0 20` | FACTORY INIT KEYS (§25.1) | `6985` |
 | `D0 22` | FACTORY INIT ATTESTATION (§25.2) | `6985` |
 | `D0 24` | GET FIRMWARE UPDATE ID (§25.3) | `9000` `00 00 00 00 00 00 00 01` |
