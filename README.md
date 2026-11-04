@@ -201,6 +201,14 @@ The corner carries etched identification, which confirms the die is an ST part:
 | `2008`  | Likely a mask or design year                                        |
 | `K2R0`  | A mask or product code, exact meaning unknown                       |
 
+Using the die size as a ruler, the "ST" swoosh monogram itself is tiny: about
+**0.04 x 0.02 mm** (40 x 20 um), roughly 1/85th of the 3.4 mm long edge and about half
+the width of one ~0.09 mm bond pad. The whole marking block (ST + the two small squares +
+`2008` + `K2R0`) is on the order of 0.15 x 0.1 mm. Measured from `die_full.png`
+(die long edge 3.4 mm -> ~547 px/mm, cross-checked against the large circular probe pad
+in the bottom-left cluster, ~0.09 mm) and the higher-magnification `die_corner_markings.jpg`.
+Estimate is +/-~20%.
+
 Near the logo is a block of small test or alignment labels (single letters such as
 `F`, `I`, `C`, `B`), and a large circular pad, probably a bonding or probe pad. A
 dense column of fingers runs down from the corner toward the pad ring. These are
