@@ -195,11 +195,17 @@ Three cleaner photos of an extracted die (source: the project owner's post,
 
 The corner carries etched identification, which confirms the die is an ST part:
 
-| Marking | Reading                                                             |
-| ------- | ------------------------------------------------------------------ |
-| Logo    | STMicroelectronics "ST" logo                                        |
-| `2008`  | Likely a mask or design year                                        |
-| `K2R0`  | A mask or product code, exact meaning unknown                       |
+| Marking   | Reading                                                           |
+| --------- | ----------------------------------------------------------------- |
+| Logo      | STMicroelectronics "ST" logo                                      |
+| Boxed `M` | Mask-work rights mark (Ⓜ), drawn as a boxed `M` next to the logo  |
+| Boxed `C` | Copyright mark (Ⓒ), drawn as a boxed `C` next to the boxed `M`    |
+| `2008`    | Likely a mask or design year                                      |
+| `K2R0`    | A mask or product code, exact meaning unknown                     |
+
+The two small boxed letters immediately right of the logo are the standard
+semiconductor legal marks — a mask-work notice (`M` in a box) and a copyright notice
+(`C` in a box) — rendered as rounded squares rather than circles.
 
 Using the die size as a ruler, the "ST" swoosh monogram itself is tiny: about
 **0.04 x 0.02 mm** (40 x 20 um), roughly 1/85th of the 3.4 mm long edge and about half
